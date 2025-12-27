@@ -1,22 +1,24 @@
-from django.shortcuts import get_object_or_404, render, redirect
-from blog.models import Post, Category
-from django.utils import timezone
-from django.db.models import Q
-from django.views.generic import ListView, UpdateView, DeleteView
 from django.contrib.auth import get_user_model
-from django.core.paginator import Paginator
-from django.urls import reverse_lazy
-from .forms import PostForm
 from django.contrib.auth.decorators import login_required
-from .forms import CongratulationForm
-from .models import Congratulation
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.shortcuts import get_object_or_404, render, redirect
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.views.generic import ListView, UpdateView, DeleteView
+
+from blog.models import Post, Category
+
+from .forms import PostForm, UserProfileForm, CongratulationForm
+from .models import Congratulation
 
 
 User = get_user_model()
 
 
 def profile_user(request, username):
+    """Функция для профиля пользователя."""
     profile = get_object_or_404(User, username=username)
 
     posts = Post.objects.filter(author=profile).order_by("-pub_date")
@@ -34,6 +36,8 @@ def profile_user(request, username):
 
 
 class IndexListView(ListView):
+    """Функция списка постов."""
+
     model = Post
     template_name = "blog/index.html"
     paginate_by = 10
@@ -59,6 +63,7 @@ class IndexListView(ListView):
 
 
 def post_detail(request, id):
+    """Детальное представление поста."""
     template = "blog/detail.html"
     post_full = get_object_or_404(Post, pk=id)
     if request.user == post_full.author and not (post_full.is_published):
@@ -71,20 +76,20 @@ def post_detail(request, id):
             & Q(is_published=True)
             & Q(category__is_published=True),
         )
+
     form = CongratulationForm()
-    # congratulations = post.congratulations.select_related('author')
     comments = Congratulation.objects.filter(post=id)
 
     context = {
         "post": post,
         "form": form,
-        # "congratulations": congratulations,
         "comments": comments,
     }
     return render(request, template, context)
 
 
 def category_posts(request, category_slug):
+    """Категория постов."""
     template = "blog/category.html"
     category = get_object_or_404(
         Category.objects.filter(slug=category_slug), is_published=True
@@ -106,6 +111,7 @@ def category_posts(request, category_slug):
 
 @login_required
 def create_post(request):
+    """Функция для создания поста."""
     form = PostForm(request.POST or None, request.FILES)
     if form.is_valid():
         post = form.save(commit=False)
@@ -118,6 +124,7 @@ def create_post(request):
 
 @login_required
 def post_edit(request, post_id):
+    """Функция для редактирования поста."""
     post = get_object_or_404(Post, pk=post_id)
     if post.author != request.user:
         return redirect("blog:post_detail", id=post_id)
@@ -134,6 +141,7 @@ def post_edit(request, post_id):
 
 @login_required
 def add_comment(request, post_id):
+    """Функция для добавления комментария к посту."""
     post = get_object_or_404(Post, pk=post_id)
     form = CongratulationForm(request.POST)
 
@@ -148,6 +156,7 @@ def add_comment(request, post_id):
 
 @login_required
 def edit_comment(request, post_id, comment_id):
+    """Функция для редактирования комментария."""
     comment = get_object_or_404(Congratulation, pk=comment_id, post=post_id)
     if comment.author == request.user:
         if request.method == "POST":
@@ -165,7 +174,9 @@ def edit_comment(request, post_id, comment_id):
     return render(request, "blog/comment.html", context)
 
 
+@login_required
 def delete_post(request, post_id):
+    """Функция для удаления поста."""
     post = get_object_or_404(Post, pk=post_id)
     if not (request.user == post.author or request.user.is_superuser):
         return redirect("blog:index")
@@ -182,6 +193,7 @@ def delete_post(request, post_id):
 
 @login_required
 def delete_comment(request, post_id, comment_id):
+    """Функция для удаления комментария к посту."""
     comment = get_object_or_404(Congratulation, pk=comment_id, post_id=post_id)
 
     if request.user == comment.author or request.user.is_superuser:
@@ -209,13 +221,14 @@ class DeleteCommentDeleteView(DeleteView):
 
 class CreateUserUpdateView(LoginRequiredMixin, UpdateView):
     model = User
-    fields = ["username", "first_name", "last_name", "email"]
+    form_class = UserProfileForm
     template_name = "blog/user.html"
 
     def get_success_url(self):
-        return reverse_lazy("blog:profile", kwargs={
-            "username": self.object.username
-        })
+        return reverse_lazy(
+            "blog:profile",
+            kwargs={"username": self.object.username}
+        )
 
     def get_object(self):
         return self.request.user

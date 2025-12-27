@@ -4,12 +4,10 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-vk = "Категория"
-
-author = "Автор публикации"
-
 
 class Post(BaseModel):
+    """Модель для постов."""
+
     title = models.CharField(max_length=256, verbose_name="Заголовок")
     text = models.TextField(verbose_name="Текст")
     pub_date = models.DateTimeField(
@@ -18,7 +16,10 @@ class Post(BaseModel):
         "можно делать отложенные публикации.",
     )
     author = models.ForeignKey(
-        User, on_delete=models.CASCADE, null=False, verbose_name=author
+        User,
+        on_delete=models.CASCADE,
+        null=False,
+        verbose_name="Автор публикации"
     )
     location = models.ForeignKey(
         "Location",
@@ -28,20 +29,30 @@ class Post(BaseModel):
         verbose_name="Местоположение",
     )
     category = models.ForeignKey(
-        "Category", on_delete=models.SET_NULL, null=True, verbose_name=vk
+        "Category",
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name="Категория"
     )
 
-    image = models.ImageField("Фото", upload_to="posts_images", blank=True)
+    image = models.ImageField(
+        'Изображение',
+        upload_to='posts_images',
+        blank=True
+    )
 
     class Meta:
         verbose_name = "публикация"
         verbose_name_plural = "Публикации"
 
     def __str__(self):
+        """Возвращает заголовок для удобства работы в админке."""
         return self.title
 
 
 class Category(BaseModel):
+    """Модель для категорий постов, унаследованный от BaseModel."""
+
     title = models.CharField(max_length=256, verbose_name="Заголовок")
     description = models.TextField(verbose_name="Описание")
     slug = models.SlugField(
@@ -56,10 +67,13 @@ class Category(BaseModel):
         verbose_name_plural = "Категории"
 
     def __str__(self):
+        """Возвращает заголовок для удобства работы в админке."""
         return self.title
 
 
 class Location(BaseModel):
+    """Модель для локаций, унаследованная от BaseModel."""
+
     name = models.CharField(max_length=256, verbose_name="Название места")
 
     class Meta:
@@ -67,16 +81,32 @@ class Location(BaseModel):
         verbose_name_plural = "Местоположения"
 
     def __str__(self):
+        """Возвращает заголовок для удобства работы в админке."""
         return self.name
 
 
 class Congratulation(models.Model):
-    text = models.TextField("Текст Комментария")
+    text = models.TextField('Текст Комментария')
     post = models.ForeignKey(
-        Post, on_delete=models.CASCADE, related_name="congratulations"
+        Post,
+        on_delete=models.CASCADE,
+        related_name='congratulations',
+        verbose_name='Пост'
     )
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name='Автор'
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Добавлено'
+    )
 
     class Meta:
-        ordering = ("created_at",)
+        ordering = ('created_at',)
+        verbose_name = "комментарий"
+        verbose_name_plural = "Комментарии"
+
+    def __str__(self):
+        return f"Комментарий от {self.author} к {self.post}"
